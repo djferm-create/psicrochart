@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PsicoChart">
+<meta name="mobile-web-app-capable" content="yes">
+<title>PsicoChart · HVAC Pro</title>
+<link rel="manifest" href="manifest.json">
+<!-- iOS icons (inline SVG fallback generado via canvas en JS) -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root {
+  --bg: #0a0f1a;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #1e3a5f;
+  --accent: #00d4ff;
+  --accent2: #ff6b35;
+  --accent3: #a8e063;
+  --yellow: #f7b731;
+  --text: #e2eaf7;
+  --muted: #6b8aad;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --tab-h: 64px;
+  --header-h: 56px;
+}
+
+/* ═══════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; overscroll-behavior: none; }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100%; display: flex; flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bot);
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: 'Syne', sans-serif; cursor: pointer; border: none; background: none; color: inherit; }
+input { font-family: 'Syne', sans-serif; }
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.app-header {
+  height: var(--header-h);
+  background: linear-gradient(135deg, #07101e 0%, #0e1e35 100%);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 10px;
+  flex-shrink: 0; position: relative; z-index: 50;
+}
+.app-logo {
+  font-size: 1.05rem; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--accent); white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.app-logo .logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  animation: pulse 2s infinite;
+}
+.header-badge {
+  font-family: 'Space Mono', monospace; font-size: .6rem;
+  color: var(--muted); border: 1px solid var(--border);
+  padding: 2px 7px; border-radius: 20px;
+}
+.city-pill-header {
+  margin-left: auto; display: flex; align-items: center; gap: 5px;
+  background: rgba(0,212,255,.08); border: 1px solid rgba(0,212,255,.25);
+  border-radius: 20px; padding: 3px 8px; font-size: .68rem; color: var(--accent);
+  max-width: 140px; overflow: hidden;
+}
+.pill-live { width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); flex-shrink: 0; animation: pulse 2s infinite; }
+.pill-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ═══════════════════════════════════════════
+   TAB BAR
+═══════════════════════════════════════════ */
+.tab-bar {
+  height: var(--tab-h);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: stretch;
+  flex-shrink: 0; position: relative; z-index: 50;
+  padding-bottom: max(var(--safe-bot), 4px);
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  padding: 6px 4px 8px; transition: all .2s;
+  position: relative; color: var(--muted);
+}
+.tab-btn.active { color: var(--accent); }
+.tab-btn.active::before {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%;
+  height: 2px; background: var(--accent);
+  border-radius: 0 0 3px 3px;
+  box-shadow: 0 0 8px var(--accent);
+}
+.tab-icon { font-size: 1.3rem; line-height: 1; }
+.tab-label { font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ═══════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════ */
+.screens { flex: 1; position: relative; overflow: hidden; }
+.screen {
+  position: absolute; inset: 0;
+  overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  display: none; flex-direction: column;
+  background: var(--bg);
+}
+.screen.active { display: flex; }
+
+/* ═══════════════════════════════════════════
+   ── TAB 1: CARTA ──
+═══════════════════════════════════════════ */
+/* Canvas wrapper */
+.chart-screen { display: flex; flex-direction: column; }
+.chart-topbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 12px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+}
+.scale-group { display: flex; gap: 4px; flex-wrap: wrap; }
+.sc-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--muted);
+  font-family: 'Space Mono', monospace; font-size: .6rem;
+  padding: 5px 8px; white-space: nowrap; transition: all .2s;
+  min-height: 32px;
+}
+.sc-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.07); }
+.tog-group { display: flex; gap: 3px; margin-left: auto; }
+.tog-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; color: var(--muted);
+  font-family: 'Space Mono', monospace; font-size: .58rem;
+  padding: 5px 7px; transition: all .2s; min-height: 32px;
+}
+.tog-btn.active { border-color: var(--accent3); color: var(--accent3); background: rgba(168,224,99,.06); }
+
+.canvas-wrap { flex: 1; position: relative; min-height: 0; }
+canvas#psychro { display: block; width: 100%; height: 100%; }
+
+.chart-loading {
+  position: absolute; inset: 0; background: rgba(10,15,26,.8);
+  display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px; z-index: 10;
+}
+.chart-loading.show { display: flex; }
+.spin-ring {
+  width: 28px; height: 28px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.load-txt { color: var(--muted); font-size: .72rem; font-family: 'Space Mono', monospace; }
+
+/* Process pills bar */
+.proc-bar {
+  display: flex; gap: 5px; padding: 8px 12px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  overflow-x: auto; flex-shrink: 0;
+}
+.proc-bar::-webkit-scrollbar { display: none; }
+.proc-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 6px 12px; white-space: nowrap;
+  font-size: .68rem; color: var(--muted); transition: all .2s;
+  flex-shrink: 0; min-height: 34px;
+}
+.proc-pill.active { border-color: var(--accent2); color: var(--text); background: rgba(255,107,53,.1); }
+.proc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+/* ═══════════════════════════════════════════
+   ── TAB 2: DATOS ──
+═══════════════════════════════════════════ */
+.datos-screen { gap: 0; }
+.section-block { padding: 16px 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.sec-title {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .15em; color: var(--muted); padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+/* sliders */
+.slider-field { display: flex; flex-direction: column; gap: 5px; }
+.slider-field label { font-size: .68rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.slider-row { display: flex; align-items: center; gap: 10px; }
+.slider-row input[type=range] {
+  -webkit-appearance: none; flex: 1; height: 5px;
+  background: var(--border); border-radius: 3px; outline: none;
+}
+.slider-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent);
+  cursor: pointer;
+}
+.slider-val {
+  font-family: 'Space Mono', monospace; font-size: .95rem;
+  font-weight: 700; color: var(--accent); min-width: 58px; text-align: right;
+}
+.slider-val.o { color: var(--accent2); }
+.slider-val.g { color: var(--accent3); }
+.mode-row { display: flex; gap: 5px; }
+.m-btn {
+  flex: 1; padding: 8px 4px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); font-family: 'Space Mono', monospace;
+  font-size: .62rem; text-align: center; transition: all .2s; min-height: 36px;
+}
+.m-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.07); }
+.p-row { display: flex; gap: 5px; }
+.p-btn {
+  flex: 1; padding: 8px 4px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); font-family: 'Space Mono', monospace;
+  font-size: .62rem; text-align: center; transition: all .2s; min-height: 36px;
+}
+.p-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,212,255,.07); }
+
+/* Estado badge */
+.estado-badge {
+  background: var(--surface2); border: 1px solid var(--accent);
+  border-radius: 10px; padding: 12px; text-align: center;
+}
+.estado-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 4px; }
+.estado-val { font-size: 1rem; font-weight: 700; color: var(--accent); }
+
+/* Propiedades grid */
+.props-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prop-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 9px; padding: 12px; display: flex; flex-direction: column; gap: 3px;
+  position: relative; transition: all .2s; min-height: 70px;
+}
+.prop-card:active { border-color: var(--accent); transform: scale(.98); }
+.prop-card::after { content: 'ℹ'; position: absolute; top: 8px; right: 9px; font-size: .65rem; color: var(--muted); opacity: .6; }
+.prop-lbl { font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+.prop-val { font-family: 'Space Mono', monospace; font-size: 1rem; font-weight: 700; color: var(--accent); }
+.prop-val.o { color: var(--accent2); }
+.prop-val.g { color: var(--accent3); }
+.prop-unit { font-size: .58rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+/* ═══════════════════════════════════════════
+   ── TAB 3: CIUDAD ──
+═══════════════════════════════════════════ */
+.ciudad-screen { gap: 0; }
+.search-block {
+  padding: 14px; background: var(--surface);
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.search-input-wrap {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 14px; transition: all .2s;
+  position: relative;
+}
+.search-input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,.1); }
+.search-input-wrap .si { color: var(--muted); font-size: 1rem; flex-shrink: 0; }
+.search-input-wrap input {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-size: .9rem; font-family: 'Syne', sans-serif;
+}
+.search-input-wrap input::placeholder { color: var(--muted); }
+.search-input-wrap .clr {
+  background: none; border: none; color: var(--muted); font-size: 1rem;
+  padding: 2px; display: none;
+}
+.search-input-wrap .clr.show { display: block; }
+.search-dropdown-m {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; z-index: 200; display: none; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6); max-height: 280px; overflow-y: auto;
+}
+.search-dropdown-m.open { display: block; }
+.dd-item {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border-bottom: 1px solid var(--border); transition: background .15s;
+}
+.dd-item:last-child { border-bottom: none; }
+.dd-item:active { background: var(--surface2); }
+.dd-flag { font-size: 1.3rem; }
+.dd-info { display: flex; flex-direction: column; gap: 2px; }
+.dd-name { font-size: .85rem; font-weight: 700; color: var(--text); }
+.dd-sub { font-size: .68rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+.dd-msg { padding: 14px; color: var(--muted); font-size: .78rem; text-align: center; }
+
+/* Weather card */
+.weather-block { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.no-city-state {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 14px; padding: 40px 24px; text-align: center;
+}
+.no-city-icon { font-size: 3rem; opacity: .3; }
+.no-city-txt { font-size: .82rem; color: var(--muted); line-height: 1.7; }
+
+.weather-hero {
+  background: linear-gradient(135deg, rgba(0,212,255,.08), rgba(168,224,99,.05));
+  border: 1px solid rgba(0,212,255,.2); border-radius: 12px; padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.wh-icon { font-size: 2.5rem; }
+.wh-info { flex: 1; }
+.wh-city { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+.wh-country { font-size: .7rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+.wh-temp { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--accent2); margin-top: 4px; }
+.wh-time { font-size: .62rem; color: var(--muted); font-family: 'Space Mono', monospace; margin-top: 2px; }
+
+.weather-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.wg-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.wg-lbl { font-size: .58rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 700; }
+.wg-val { font-family: 'Space Mono', monospace; font-size: .88rem; font-weight: 700; color: var(--accent); margin-top: 3px; }
+.wg-val.o { color: var(--accent2); }
+.wg-val.g { color: var(--accent3); }
+
+.refresh-block {
+  display: flex; gap: 8px;
+}
+.refresh-full-btn {
+  flex: 1; background: rgba(0,212,255,.07); border: 1px solid rgba(0,212,255,.25);
+  border-radius: 9px; color: var(--accent); padding: 12px;
+  font-size: .78rem; font-weight: 700; text-align: center; transition: all .2s;
+  min-height: 44px;
+}
+.refresh-full-btn:active { background: rgba(0,212,255,.15); }
+.clear-city-btn {
+  background: rgba(255,107,53,.07); border: 1px solid rgba(255,107,53,.25);
+  border-radius: 9px; color: var(--accent2); padding: 12px 16px;
+  font-size: .78rem; font-weight: 700; transition: all .2s; min-height: 44px;
+}
+.clear-city-btn:active { background: rgba(255,107,53,.15); }
+
+/* Forecast */
+.forecast-title { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+.forecast-scroll { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.forecast-scroll::-webkit-scrollbar { display: none; }
+.fc { flex-shrink: 0; background: var(--surface2); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 62px; transition: all .2s; }
+.fc:active { border-color: var(--accent); }
+.fc.active { border-color: var(--accent2); background: rgba(255,107,53,.08); }
+.fc-t { font-size: .6rem; color: var(--muted); font-family: 'Space Mono', monospace; }
+.fc-i { font-size: 1.1rem; }
+.fc-tp { font-size: .85rem; font-weight: 700; color: var(--accent2); font-family: 'Space Mono', monospace; }
+.fc-h { font-size: .72rem; color: var(--accent); font-family: 'Space Mono', monospace; }
+
+/* Offline banner */
+.offline-banner {
+  background: rgba(247,183,49,.1); border-bottom: 1px solid rgba(247,183,49,.3);
+  padding: 8px 14px; display: none; align-items: center; gap: 8px;
+  font-size: .72rem; color: var(--yellow);
+}
+.offline-banner.show { display: flex; }
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.7);
+  z-index: 300; display: none; align-items: flex-end;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  padding-bottom: var(--safe-bot);
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--surface); width: 100%;
+  border-radius: 20px 20px 0 0; max-height: 85vh;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  animation: slideUp .28s cubic-bezier(.32,1.2,.5,1);
+  padding-bottom: max(var(--safe-bot), 16px);
+}
+@keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+.modal-header-m { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+.modal-title-m { font-size: .95rem; font-weight: 800; color: var(--accent); }
+.modal-close-m { width: 30px; height: 30px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+.modal-body-m { padding: 18px 20px; }
+.modal-body-m h3 { font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 7px; margin-top: 14px; font-weight: 700; }
+.modal-body-m h3:first-child { margin-top: 0; }
+.modal-body-m p { font-size: .82rem; line-height: 1.8; color: #a8bdd4; margin-bottom: 8px; }
+.modal-body-m strong { color: var(--text); }
+.formula-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; font-family: 'Space Mono', monospace; font-size: .75rem;
+  color: var(--accent); margin: 8px 0; line-height: 2; overflow-x: auto;
+  white-space: pre; -webkit-overflow-scrolling: touch;
+}
+.formula-box .cm { color: var(--muted); font-size: .68rem; }
+.val-hl {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,107,53,.1); border: 1px solid rgba(255,107,53,.3);
+  border-radius: 7px; padding: 8px 12px; margin: 6px 0;
+  font-family: 'Space Mono', monospace; font-size: .9rem;
+  color: var(--accent2); font-weight: 700;
+}
+.src-tag {
+  display: inline-block; background: rgba(0,212,255,.07);
+  border: 1px solid rgba(0,212,255,.2); border-radius: 20px;
+  padding: 3px 10px; font-size: .62rem; color: var(--accent);
+  font-family: 'Space Mono', monospace; margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════ */
+.toast {
+  position: fixed; bottom: calc(var(--tab-h) + var(--safe-bot) + 12px);
+  left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 10px 18px;
+  font-size: .78rem; color: var(--text); z-index: 400;
+  opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap;
+  box-shadow: 0 4px 24px rgba(0,0,0,.5);
+}
+.toast.show { opacity: 1; }
+
+/* ═══════════════════════════════════════════
+   ANIMATIONS & UTILS
+═══════════════════════════════════════════ */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="app-header">
+  <div class="app-logo">
+    <div class="logo-dot"></div>
+    PsicoChart
+  </div>
+  <span class="header-badge">HVAC Pro</span>
+  <div class="city-pill-header" id="headerCityPill" style="display:none;">
+    <div class="pill-live"></div>
+    <span class="pill-name" id="headerCityName">—</span>
+  </div>
+</header>
+
+<!-- Offline banner -->
+<div class="offline-banner" id="offlineBanner">⚡ Sin conexión — usando últimos datos guardados</div>
+
+<!-- ══ SCREENS ══ -->
+<div class="screens">
+
+  <!-- ── TAB 1: CARTA ── -->
+  <div class="screen chart-screen active" id="screen-carta">
+    <!-- Scale topbar -->
+    <div class="chart-topbar">
+      <div class="scale-group">
+        <button class="sc-btn" onclick="applyPreset(-10,30)">-10→30°</button>
+        <button class="sc-btn active" id="sc-0-45" onclick="applyPreset(0,45,event)">0→45°</button>
+        <button class="sc-btn" onclick="applyPreset(0,60,event)">0→60°</button>
+        <button class="sc-btn" onclick="applyPreset(15,35,event)">Confort</button>
+      </div>
+      <div class="tog-group">
+        <button class="tog-btn active" id="tog-tbu" onclick="toggleLayer('tbu')">Tbu</button>
+        <button class="tog-btn active" id="tog-h" onclick="toggleLayer('hlines')">h</button>
+        <button class="tog-btn active" id="tog-lbl" onclick="toggleLayer('labels')">Lbl</button>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="psychro"></canvas>
+      <div class="chart-loading" id="chartLoading">
+        <div class="spin-ring"></div>
+        <div class="load-txt" id="loadTxt">Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Procesos HVAC -->
+    <div class="proc-bar">
+      <button class="proc-pill active" id="proc-none" onclick="setProcess('none')">
+        <div class="proc-dot" style="background:var(--muted)"></div>Sin proceso
+      </button>
+      <button class="proc-pill" id="proc-calefaccion" onclick="setProcess('calefaccion')">
+        <div class="proc-dot" style="background:#ff6b35"></div>Calefacción
+      </button>
+      <button class="proc-pill" id="proc-enfriamiento" onclick="setProcess('enfriamiento')">
+        <div class="proc-dot" style="background:#00d4ff"></div>Enfriamiento
+      </button>
+      <button class="proc-pill" id="proc-humidificacion" onclick="setProcess('humidificacion')">
+        <div class="proc-dot" style="background:#a8e063"></div>Humidificación
+      </button>
+      <button class="proc-pill" id="proc-deshumidificacion" onclick="setProcess('deshumidificacion')">
+        <div class="proc-dot" style="background:#f7b731"></div>Deshumidif.
+      </button>
+    </div>
+  </div>
+
+  <!-- ── TAB 2: DATOS ── -->
+  <div class="screen datos-screen" id="screen-datos">
+
+    <div class="section-block">
+      <div class="sec-title">📍 Punto de Estado</div>
+      <div class="slider-field">
+        <label>Temperatura Bulbo Seco (Tbs)</label>
+        <div class="slider-row">
+          <input type="range" id="tbs" min="-10" max="55" step="0.5" value="25">
+          <span class="slider-val" id="tbs-val">25.0°C</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Definir estado via</label>
+        <div class="mode-row">
+          <button class="m-btn active" id="mode-hr"  onclick="setMode('hr')">HR %</button>
+          <button class="m-btn"        id="mode-tbu" onclick="setMode('tbu')">T. Bulbo Húm.</button>
+          <button class="m-btn"        id="mode-td"  onclick="setMode('td')">T. de Rocío</button>
+        </div>
+      </div>
+      <div id="field-hr" class="slider-field">
+        <label>Humedad Relativa (HR)</label>
+        <div class="slider-row">
+          <input type="range" id="hr" min="0" max="100" step="1" value="50">
+          <span class="slider-val o" id="hr-val">50%</span>
+        </div>
+      </div>
+      <div id="field-tbu" class="slider-field" style="display:none;">
+        <label>Temperatura Bulbo Húmedo (Tbu)</label>
+        <div class="slider-row">
+          <input type="range" id="tbu" min="-10" max="55" step="0.5" value="18">
+          <span class="slider-val g" id="tbu-val">18.0°C</span>
+        </div>
+      </div>
+      <div id="field-td" class="slider-field" style="display:none;">
+        <label>Temperatura de Rocío (Td)</label>
+        <div class="slider-row">
+          <input type="range" id="td-input" min="-15" max="50" step="0.5" value="14">
+          <span class="slider-val g" id="td-val">14.0°C</span>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Presión Atmosférica</label>
+        <div class="p-row">
+          <button class="p-btn active" onclick="setP(101325)" id="p-std">101.3 kPa</button>
+          <button class="p-btn"        onclick="setP(98000)"  id="p-1000">~1000 m</button>
+          <button class="p-btn"        onclick="setP(95000)"  id="p-2000">~2000 m</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <div class="sec-title">📊 Propiedades del Aire <span style="font-size:.54rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— toca para ver fórmula</span></div>
+      <div class="estado-badge">
+        <div class="estado-lbl">Estado del punto</div>
+        <div class="estado-val" id="estado-aire">Aire Húmedo</div>
+      </div>
+      <div class="props-grid">
+        <div class="prop-card" onclick="openModal('tbs')">
+          <div class="prop-lbl">T. Bulbo Seco</div>
+          <div class="prop-val" id="res-tbs">25.0</div>
+          <div class="prop-unit">°C</div>
+        </div>
+        <div class="prop-card" onclick="openModal('tbu')">
+          <div class="prop-lbl">T. Bulbo Húmedo</div>
+          <div class="prop-val g" id="res-tbu">18.3</div>
+          <div class="prop-unit">°C</div>
+        </div>
+        <div class="prop-card" onclick="openModal('td')">
+          <div class="prop-lbl">T. de Rocío</div>
+          <div class="prop-val g" id="res-td">13.9</div>
+          <div class="prop-unit">°C</div>
+        </div>
+        <div class="prop-card" onclick="openModal('hr')">
+          <div class="prop-lbl">Hum. Relativa</div>
+          <div class="prop-val o" id="res-hr">50.0</div>
+          <div class="prop-unit">%</div>
+        </div>
+        <div class="prop-card" onclick="openModal('w')">
+          <div class="prop-lbl">Hum. Específica</div>
+          <div class="prop-val" id="res-w">9.95</div>
+          <div class="prop-unit">g/kg a.s.</div>
+        </div>
+        <div class="prop-card" onclick="openModal('h')">
+          <div class="prop-lbl">Entalpía</div>
+          <div class="prop-val o" id="res-h">50.5</div>
+          <div class="prop-unit">kJ/kg a.s.</div>
+        </div>
+        <div class="prop-card" onclick="openModal('v')">
+          <div class="prop-lbl">Vol. Específico</div>
+          <div class="prop-val" id="res-v">0.858</div>
+          <div class="prop-unit">m³/kg a.s.</div>
+        </div>
+        <div class="prop-card" onclick="openModal('pv')">
+          <div class="prop-lbl">Pres. Vapor</div>
+          <div class="prop-val g" id="res-pv">1.583</div>
+          <div class="prop-unit">kPa</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /datos-screen -->
+
+  <!-- ── TAB 3: CIUDAD ── -->
+  <div class="screen ciudad-screen" id="screen-ciudad">
+    <div class="search-block">
+      <div class="search-input-wrap" id="searchWrap">
+        <span class="si">🌍</span>
+        <input type="text" id="cityInput" placeholder="Buscar ciudad (ej: Madrid, Dubai...)" autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="clr" id="clearBtn" onclick="clearInput()">✕</button>
+        <div class="search-dropdown-m" id="searchDrop"></div>
+      </div>
+    </div>
+
+    <!-- Sin ciudad -->
+    <div class="no-city-state" id="noCityState">
+      <div class="no-city-icon">🌍</div>
+      <div class="no-city-txt">Busca una ciudad para cargar<br>datos meteorológicos en tiempo real.<br><br>Los sliders de la carta se actualizarán automáticamente.</div>
+    </div>
+
+    <!-- Con ciudad -->
+    <div id="cityData" style="display:none;" class="weather-block">
+      <div class="weather-hero">
+        <div class="wh-icon" id="wh-icon">🌤️</div>
+        <div class="wh-info">
+          <div class="wh-city" id="wh-city">—</div>
+          <div class="wh-country" id="wh-country">—</div>
+          <div class="wh-temp" id="wh-temp">—</div>
+          <div class="wh-time" id="wh-time">—</div>
+        </div>
+      </div>
+      <div class="weather-grid">
+        <div class="wg-item"><div class="wg-lbl">HR</div><div class="wg-val o" id="wg-hr">—</div></div>
+        <div class="wg-item"><div class="wg-lbl">T. Rocío</div><div class="wg-val g" id="wg-td">—</div></div>
+        <div class="wg-item"><div class="wg-lbl">Presión</div><div class="wg-val" id="wg-p">—</div></div>
+        <div class="wg-item"><div class="wg-lbl">Viento</div><div class="wg-val" id="wg-wind">—</div></div>
+        <div class="wg-item"><div class="wg-lbl">Altitud</div><div class="wg-val" id="wg-alt">—</div></div>
+        <div class="wg-item"><div class="wg-lbl">W</div><div class="wg-val" id="wg-w">—</div></div>
+      </div>
+      <div class="refresh-block">
+        <button class="refresh-full-btn" id="refreshBtn" onclick="refreshWeather()">⟳ Actualizar datos</button>
+        <button class="clear-city-btn" onclick="clearCity()">✕</button>
+      </div>
+      <div class="forecast-title">Próximas 12 horas</div>
+      <div class="forecast-scroll" id="forecastScroll"></div>
+    </div>
+
+  </div><!-- /ciudad-screen -->
+
+</div><!-- /screens -->
+
+<!-- ══ TAB BAR ══ -->
+<nav class="tab-bar">
+  <button class="tab-btn active" id="tab-carta" onclick="switchTab('carta')">
+    <span class="tab-icon">📈</span>
+    <span class="tab-label">Carta</span>
+  </button>
+  <button class="tab-btn" id="tab-datos" onclick="switchTab('datos')">
+    <span class="tab-icon">🌡️</span>
+    <span class="tab-label">Datos</span>
+  </button>
+  <button class="tab-btn" id="tab-ciudad" onclick="switchTab('ciudad')">
+    <span class="tab-icon">🌍</span>
+    <span class="tab-label">Ciudad</span>
+  </button>
+</nav>
+
+<!-- ══ MODAL ══ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-sheet" id="modalSheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-m">
+      <div class="modal-title-m" id="modal-title">—</div>
+      <button class="modal-close-m" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body-m" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════════════
+const state = {
+  tbs:25, hr:50, tbu:18, td:14,
+  P:101325, mode:'hr', tmin:0, tmax:45, wmax:30,
+  process:'none', city:null, weatherData:null,
+  layers:{ tbu:true, hlines:true, labels:true }
+};
+let searchTimer = null;
+
+// ════════════════════════════════════════════════════════
+// PSICROMETRÍA ASHRAE
+// ════════════════════════════════════════════════════════
+const Cpda=1006, Cpv=1805;
+function pws(T){ const t=T+273.15; return T>=0?Math.exp(23.7836-3782.89/(t-43.765)):Math.exp(23.7836-3782.89/(t-43.765))*.82; }
+function Wpw(pw,P){ if(pw>=P)pw=P*.999; return .62198*pw/(P-pw); }
+function hrW(W,T,P){ return W*P/(.62198+W)/pws(T)*100; }
+function tbuIter(tbs,W,P){
+  let t=tbs-4;
+  for(let i=0;i<50;i++){
+    const Ws=Wpw(pws(t),P);
+    const f=Ws-(Cpda/1000/(2501-2.381*t))*(tbs-t)-W;
+    const df=(Wpw(pws(t+.01),P)-Wpw(pws(t-.01),P))/.02+Cpda/1000/(2501-2.381*t);
+    const dt=f/df; t-=dt; if(Math.abs(dt)<1e-6)break;
+  }
+  return t;
+}
+function tdPw(pw){ const l=Math.log(pw/610.78); return 241.3*l/(17.368-l); }
+function enthalpy(T,W){ return(Cpda*T+W*(2501000+Cpv*T))/1000; }
+function specVol(T,W,P){ return 287.055*(T+273.15)/(P*(1-W/(.62198+W))); }
+function computeState(tbs,hr,P){
+  const pw=(hr/100)*pws(tbs), W=Wpw(pw,P)*1000, Wk=W/1000;
+  return{ tbs, hr, tbu:tbuIter(tbs,Wk,P), td:tdPw(pw), W, h:enthalpy(tbs,Wk), v:specVol(tbs,Wk,P), pw:pw/1000 };
+}
+function getCurrent(){
+  let tbs=state.tbs, hr=state.hr;
+  if(state.mode==='tbu'){
+    const Ws=Wpw(pws(state.tbu),state.P);
+    const W=Ws-(Cpda/1000/(2501-2.381*state.tbu))*(tbs-state.tbu);
+    if(W>0){ hr=hrW(W,tbs,state.P); hr=Math.max(0,Math.min(100,hr)); }
+  } else if(state.mode==='td'){
+    const W=Wpw(pws(state.td),state.P);
+    hr=hrW(W,tbs,state.P); hr=Math.max(0,Math.min(100,hr));
+  }
+  return computeState(tbs,hr,state.P);
+}
+
+// ════════════════════════════════════════════════════════
+// CANVAS & DIBUJO
+// ════════════════════════════════════════════════════════
+const canvas=document.getElementById('psychro');
+const ctx=canvas.getContext('2d');
+const mg={ top:28, right:55, bottom:40, left:48 };
+function cW(){ return canvas.width-mg.left-mg.right; }
+function cH(){ return canvas.height-mg.top-mg.bottom; }
+function xPx(T){ return mg.left+(T-state.tmin)/(state.tmax-state.tmin)*cW(); }
+function yPx(W){ return mg.top+cH()*(1-W/state.wmax); }
+
+function resizeCanvas(){
+  const wrap=document.getElementById('canvasWrap');
+  canvas.width=wrap.clientWidth;
+  canvas.height=wrap.clientHeight;
+  draw();
+}
+
+function draw(){
+  if(!canvas.width||!canvas.height) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const bg=ctx.createLinearGradient(0,0,0,canvas.height);
+  bg.addColorStop(0,'#0a0e1a'); bg.addColorStop(1,'#070c17');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(mg.left,mg.top,cW(),cH()); ctx.clip();
+  drawGrid(); drawRH(); drawSat();
+  if(state.layers.tbu) drawTbu();
+  if(state.layers.hlines) drawH();
+  drawPoint(); drawArrow();
+  ctx.restore();
+  drawAxes();
+}
+
+function drawGrid(){
+  ctx.strokeStyle='rgba(30,58,95,.4)'; ctx.lineWidth=.5;
+  for(let T=Math.ceil(state.tmin);T<=state.tmax;T+=5){ ctx.beginPath();ctx.moveTo(xPx(T),mg.top);ctx.lineTo(xPx(T),mg.top+cH());ctx.stroke(); }
+  for(let W=0;W<=state.wmax;W+=5){ ctx.beginPath();ctx.moveTo(mg.left,yPx(W));ctx.lineTo(mg.left+cW(),yPx(W));ctx.stroke(); }
+}
+function drawRH(){
+  [10,20,30,40,50,60,70,80,90,100].forEach(hr=>{
+    ctx.beginPath(); let first=true;
+    for(let T=state.tmin-5;T<=state.tmax+2;T+=.4){
+      const pw=(hr/100)*pws(T), W=Wpw(pw,state.P)*1000;
+      if(W<0||W>state.wmax+.5){first=true;continue;}
+      const x=xPx(T),y=yPx(W);
+      first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle=hr===100?'rgba(0,212,255,.9)':`rgba(0,190,225,${.14+hr*.0028})`;
+    ctx.lineWidth=hr===100?2:.8; ctx.stroke();
+    if(state.layers.labels&&hr<100){
+      const lT=state.tmax-(state.tmax-state.tmin)*.1;
+      const Wl=Wpw((hr/100)*pws(lT),state.P)*1000;
+      if(Wl>.5&&Wl<state.wmax){ ctx.fillStyle='rgba(0,212,255,.5)';ctx.font=`bold 8px 'Space Mono',monospace`;ctx.textAlign='left';ctx.fillText(hr+'%',xPx(lT)+2,yPx(Wl)-2); }
+    }
+  });
+}
+function drawSat(){
+  ctx.beginPath(); let first=true;
+  for(let T=state.tmin-2;T<=state.tmax+1;T+=.2){
+    const W=Wpw(pws(T),state.P)*1000;
+    if(W>state.wmax+1){first=true;continue;}
+    const x=xPx(T),y=yPx(W);
+    first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);
+  }
+  const g=ctx.createLinearGradient(xPx(state.tmin),0,xPx(state.tmax),0);
+  g.addColorStop(0,'rgba(0,180,255,.6)'); g.addColorStop(1,'rgba(0,212,255,1)');
+  ctx.strokeStyle=g; ctx.lineWidth=2.2; ctx.stroke();
+  ctx.lineTo(xPx(state.tmax+1),mg.top+cH()); ctx.lineTo(xPx(state.tmin-2),mg.top+cH()); ctx.closePath();
+  const f=ctx.createLinearGradient(0,mg.top,0,mg.top+cH());
+  f.addColorStop(0,'rgba(0,212,255,.07)'); f.addColorStop(1,'rgba(0,212,255,.01)');
+  ctx.fillStyle=f; ctx.fill();
+}
+function drawTbu(){
+  for(let Tb=-5;Tb<=55;Tb+=5){
+    const Ws=Wpw(pws(Tb),state.P);
+    ctx.beginPath(); let first=true;
+    for(let T=Tb;T<=state.tmax+2;T+=.5){
+      const W=(Ws-(Cpda/1000/(2501-2.381*Tb))*(T-Tb))*1000;
+      if(W<-.1||W>state.wmax+.5){first=true;continue;}
+      const x=xPx(T),y=yPx(Math.max(0,W));
+      first?(ctx.moveTo(x,y),first=false):ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(168,224,99,.13)'; ctx.lineWidth=.6;
+    ctx.setLineDash([3,5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+function drawH(){
+  for(let h=0;h<=140;h+=20){
+    ctx.beginPath(); let first=true;
+    for(let Wg=0;Wg<=state.wmax;Wg+=.5){
+      const W=Wg/1000, T=(h*1000-W*2501000)/(Cpda+W*Cpv);
+      if(T<state.tmin-2||T>state.tmax+2){first=true;continue;}
+      first?(ctx.moveTo(xPx(T),yPx(Wg)),first=false):ctx.lineTo(xPx(T),yPx(Wg));
+    }
+    ctx.strokeStyle='rgba(247,183,49,.09)'; ctx.lineWidth=.6;
+    ctx.setLineDash([5,8]); ctx.stroke(); ctx.setLineDash([]);
+    if(state.layers.labels){
+      for(let Wg=2;Wg<=state.wmax-2;Wg+=.5){
+        const W=Wg/1000, T=(h*1000-W*2501000)/(Cpda+W*Cpv);
+        if(T>state.tmin+2&&T<state.tmax-3){ ctx.fillStyle='rgba(247,183,49,.38)';ctx.font=`7px 'Space Mono',monospace`;ctx.textAlign='left';ctx.fillText(h+'kJ',xPx(T)+2,yPx(Wg)-2);break; }
+      }
+    }
+  }
+}
+function drawPoint(){
+  const res=getCurrent();
+  const x=xPx(res.tbs), y=yPx(res.W);
+  if(x<mg.left-10||x>mg.left+cW()+10||y<mg.top-10||y>mg.top+cH()+10) return;
+  ctx.strokeStyle='rgba(255,107,53,.16)'; ctx.lineWidth=.7; ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(mg.left,y);ctx.lineTo(mg.left+cW(),y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,mg.top);ctx.lineTo(x,mg.top+cH());ctx.stroke();
+  ctx.setLineDash([]);
+  const glow=ctx.createRadialGradient(x,y,0,x,y,22);
+  glow.addColorStop(0,'rgba(255,107,53,.35)'); glow.addColorStop(1,'rgba(255,107,53,0)');
+  ctx.beginPath();ctx.arc(x,y,22,0,Math.PI*2);ctx.fillStyle=glow;ctx.fill();
+  ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);
+  ctx.fillStyle='#ff6b35';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.8;ctx.stroke();
+  if(state.layers.labels){
+    const lx=x>mg.left+cW()-90?x-82:x+12;
+    const ly=y<mg.top+30?y+24:y-12;
+    const bh=state.city?42:30;
+    ctx.fillStyle='rgba(8,13,24,.92)';
+    ctx.beginPath();ctx.roundRect(lx-4,ly-14,84,bh,4);ctx.fill();
+    ctx.strokeStyle='#ff6b35';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#ff6b35';ctx.font=`bold 10px 'Space Mono',monospace`;ctx.textAlign='left';
+    ctx.fillText(`${res.tbs.toFixed(1)}°C`,lx,ly);
+    ctx.fillStyle='#a8e063';ctx.fillText(`${res.W.toFixed(1)}g/kg`,lx,ly+14);
+    if(state.city){ctx.fillStyle='rgba(0,212,255,.75)';ctx.font=`bold 8.5px 'Syne',sans-serif`;ctx.fillText('📍'+state.city.name,lx,ly+28);}
+  }
+}
+function drawArrow(){
+  if(state.process==='none') return;
+  const res=getCurrent();
+  const x1=xPx(res.tbs), y1=yPx(res.W);
+  let x2,y2,color,label;
+  if(state.process==='calefaccion'){
+    x2=xPx(Math.min(res.tbs+10,state.tmax-1));y2=y1;color='#ff6b35';label='+10°C';
+  } else if(state.process==='enfriamiento'){
+    x2=xPx(Math.max(res.tbs-10,res.td+.1));y2=y1;color='#00d4ff';label='-10°C';
+  } else if(state.process==='humidificacion'){
+    const W2=Math.min(res.W+6,state.wmax-1);
+    const Ws=Wpw(pws(res.tbu),state.P)*1000;
+    x2=xPx(res.tbu+(Ws-W2/1000)*(2501-2.381*res.tbu)*1000/Cpda);y2=yPx(W2);color='#a8e063';label='Humidif.';
+  } else {
+    const T2=Math.max(res.td-2,state.tmin+1);
+    x2=xPx(T2);y2=yPx(Wpw(pws(T2),state.P)*1000);color='#f7b731';label='Deshumid.';
+  }
+  ctx.strokeStyle=color;ctx.lineWidth=2.2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const ang=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-11*Math.cos(ang-.4),y2-11*Math.sin(ang-.4));
+  ctx.lineTo(x2-11*Math.cos(ang+.4),y2-11*Math.sin(ang+.4));
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+  ctx.fillStyle=color;ctx.font=`bold 9px 'Space Mono',monospace`;ctx.textAlign='left';
+  ctx.fillText(label,(x1+x2)/2-14,(y1+y2)/2-8);
+}
+function drawAxes(){
+  ctx.strokeStyle='rgba(0,212,255,.32)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(mg.left,mg.top+cH());ctx.lineTo(mg.left+cW(),mg.top+cH());ctx.stroke();
+  ctx.fillStyle='rgba(0,212,255,.6)';ctx.font=`8.5px 'Space Mono',monospace`;ctx.textAlign='center';
+  for(let T=Math.ceil(state.tmin/5)*5;T<=state.tmax;T+=5){
+    const x=xPx(T);ctx.beginPath();ctx.moveTo(x,mg.top+cH());ctx.lineTo(x,mg.top+cH()+4);ctx.stroke();
+    ctx.fillText(T+'°',x,mg.top+cH()+14);
+  }
+  ctx.textAlign='right';
+  for(let W=0;W<=state.wmax;W+=5){
+    const y=yPx(W);ctx.beginPath();ctx.moveTo(mg.left-3,y);ctx.lineTo(mg.left,y);ctx.stroke();
+    ctx.fillText(W,mg.left-6,y+3);
+  }
+  ctx.textAlign='left';
+  for(let W=0;W<=state.wmax;W+=5) ctx.fillText(W,mg.left+cW()+5,yPx(W)+3);
+  ctx.textAlign='center';ctx.fillStyle='rgba(0,212,255,.65)';ctx.font=`bold 9px 'Syne',sans-serif`;
+  ctx.fillText('Tbs (°C)',mg.left+cW()/2,canvas.height-4);
+  ctx.save();ctx.translate(11,mg.top+cH()/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText('W (g/kg)',0,0);ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════
+function switchTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='carta') requestAnimationFrame(()=>resizeCanvas());
+}
+
+// ════════════════════════════════════════════════════════
+// ESCALA
+// ════════════════════════════════════════════════════════
+function applyPreset(tmin,tmax,evt){
+  state.tmin=tmin; state.tmax=tmax;
+  document.querySelectorAll('.sc-btn').forEach(b=>b.classList.remove('active'));
+  if(evt) evt.target.classList.add('active');
+  draw();
+}
+function toggleLayer(l){
+  state.layers[l]=!state.layers[l];
+  const idMap={tbu:'tog-tbu',hlines:'tog-h',labels:'tog-lbl'};
+  document.getElementById(idMap[l]).classList.toggle('active',state.layers[l]);
+  draw();
+}
+
+// ════════════════════════════════════════════════════════
+// UI UPDATE
+// ════════════════════════════════════════════════════════
+function updateUI(){
+  const res=getCurrent();
+  // Sliders labels
+  document.getElementById('tbs-val').textContent=state.tbs.toFixed(1)+'°C';
+  if(state.mode==='hr')  document.getElementById('hr-val').textContent=state.hr.toFixed(0)+'%';
+  if(state.mode==='tbu') document.getElementById('tbu-val').textContent=state.tbu.toFixed(1)+'°C';
+  if(state.mode==='td')  document.getElementById('td-val').textContent=state.td.toFixed(1)+'°C';
+  // Props
+  document.getElementById('res-tbs').textContent=res.tbs.toFixed(1);
+  document.getElementById('res-tbu').textContent=res.tbu.toFixed(1);
+  document.getElementById('res-td').textContent=res.td.toFixed(1);
+  document.getElementById('res-hr').textContent=res.hr.toFixed(1);
+  document.getElementById('res-w').textContent=res.W.toFixed(2);
+  document.getElementById('res-h').textContent=res.h.toFixed(1);
+  document.getElementById('res-v').textContent=res.v.toFixed(3);
+  document.getElementById('res-pv').textContent=res.pw.toFixed(3);
+  // Estado
+  let estado='Aire Húmedo', ec='var(--accent)';
+  if(res.hr>=99.9){estado='💧 Saturado HR=100%';ec='#00d4ff';}
+  else if(res.hr>70){estado='🌫️ Muy Húmedo';ec='#00bcd4';}
+  else if(res.hr>40){estado='✅ Zona Confort';ec='#a8e063';}
+  else if(res.hr>20){estado='🏜️ Seco';ec='#f7b731';}
+  else{estado='⚠️ Muy Seco';ec='#ff6b35';}
+  const el=document.getElementById('estado-aire');el.textContent=estado;el.style.color=ec;
+  // W en ciudad tab
+  if(document.getElementById('wg-w')) document.getElementById('wg-w').textContent=res.W.toFixed(2)+' g/kg';
+  draw();
+}
+
+// Sliders
+function br(id,key){ document.getElementById(id).addEventListener('input',e=>{state[key]=parseFloat(e.target.value);updateUI();}); }
+br('tbs','tbs'); br('hr','hr'); br('tbu','tbu'); br('td-input','td');
+
+function setMode(m){
+  state.mode=m;
+  ['hr','tbu','td'].forEach(k=>{
+    document.getElementById(`field-${k}`).style.display=k===m?'flex':'none';
+    document.getElementById(`mode-${k}`).classList.toggle('active',k===m);
+    if(k===m) document.getElementById(`field-${k}`).style.flexDirection='column';
+  });
+  updateUI();
+}
+function setP(P){
+  state.P=P;
+  ['p-std','p-1000','p-2000'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  const m={101325:'p-std',98000:'p-1000',95000:'p-2000'};
+  if(m[P]) document.getElementById(m[P]).classList.add('active');
+  updateUI();
+}
+function setProcess(p){
+  state.process=p;
+  document.querySelectorAll('.proc-pill').forEach(b=>b.classList.remove('active'));
+  document.getElementById('proc-'+p).classList.add('active');
+  draw();
+}
+
+// ════════════════════════════════════════════════════════
+// MODALES FÓRMULAS
+// ════════════════════════════════════════════════════════
+const FORMULAS={
+  tbs:{title:'🌡️ Temperatura de Bulbo Seco',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Temperatura del aire medida con termómetro ordinario, sin efecto de la humedad. Parámetro de entrada principal de la carta psicrométrica.</p>
+    <h3>Valor actual</h3><div class="val-hl">${r.tbs.toFixed(2)} °C</div>
+    <h3>Origen del dato</h3><p>Introducido directamente via slider o importado desde la API meteorológica de la ciudad seleccionada.</p>
+    <div class="src-tag">ASHRAE Fundamentals 2017 · Cap. 1</div>`},
+  tbu:{title:'💧 Temperatura de Bulbo Húmedo',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Temperatura a la que el aire se satura por evaporación adiabática. La <strong>depresión psicrométrica</strong> (Tbs − Tbu) indica la sequedad del aire.</p>
+    <h3>Cálculo (iteración Newton)</h3>
+    <div class="formula-box">W_sat(Tbu) = 0.62198·pws(Tbu)/(P−pws(Tbu))
+W = W_sat(Tbu) − [Cpda/(2501−2.381·Tbu)]·(Tbs−Tbu)
+<span class="cm">// Se resuelve iterativamente para Tbu dado W</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.tbu.toFixed(2)} °C</div>
+    <p>Depresión: <strong>${(r.tbs-r.tbu).toFixed(1)}°C</strong></p>
+    <div class="src-tag">ASHRAE · Ec. 35</div>`},
+  td:{title:'❄️ Temperatura de Rocío',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Temperatura a la que hay que enfriar el aire (W constante) para alcanzar HR=100% y comenzar la condensación.</p>
+    <h3>Fórmula Magnus-Tetens</h3>
+    <div class="formula-box">Td = 241.3·ln(pv/610.78) / (17.368−ln(pv/610.78))
+<span class="cm">// pv = presión parcial de vapor [Pa]</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.td.toFixed(2)} °C</div>
+    <p>Faltan <strong>${(r.tbs-r.td).toFixed(1)}°C</strong> para saturar el aire.</p>
+    <div class="src-tag">WMO-No.8 · 2018</div>`},
+  hr:{title:'💦 Humedad Relativa',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Cociente entre la presión de vapor actual y la de saturación. Indica cuán lejos está el aire de saturarse.</p>
+    <h3>Fórmulas</h3>
+    <div class="formula-box">HR = (pv / pws(Tbs)) × 100   [%]
+pws(T) = exp(23.7836 − 3782.89/(T+273.15−43.765))
+<span class="cm">// pws = presión de saturación [Pa] — Antoine</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.hr.toFixed(2)} %</div>
+    <p>Confort ASHRAE: 40–70%. Estado: ${r.hr<40?'⚠️ bajo':r.hr>70?'⚠️ alto':'✅ confort'}.</p>
+    <div class="src-tag">ASHRAE 55-2020</div>`},
+  w:{title:'⚗️ Humedad Específica (W)',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Masa de vapor por kg de <strong>aire seco</strong>. Se conserva en procesos sensibles. Es la coordenada Y de la carta psicrométrica.</p>
+    <h3>Fórmula</h3>
+    <div class="formula-box">W = 0.62198·pv / (P − pv)   [kg_v/kg_as]
+W [g/kg] = W × 1000
+<span class="cm">// 0.62198 = Mv/Ma = 18.015/28.966</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.W.toFixed(3)} g/kg a.s.</div>
+    <div class="src-tag">ASHRAE · Ec. 20</div>`},
+  h:{title:'🔥 Entalpía Específica (h)',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Energía total del aire húmedo: calor <strong>sensible</strong> (temperatura) + calor <strong>latente</strong> (vapor). Clave para dimensionar equipos.</p>
+    <h3>Fórmula</h3>
+    <div class="formula-box">h = 1.006·Tbs + W·(2501 + 1.805·Tbs)   [kJ/kg]
+<span class="cm">// Cpda=1.006 kJ/kg·K  Cpv=1.805 kJ/kg·K</span>
+<span class="cm">// L₀=2501 kJ/kg (calor latente a 0°C)</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.h.toFixed(2)} kJ/kg</div>
+    <p>Sensible: <strong>${(1.006*r.tbs).toFixed(1)} kJ/kg</strong> · Latente: <strong>${(r.W/1000*(2501+1.805*r.tbs)).toFixed(1)} kJ/kg</strong></p>
+    <div class="src-tag">ASHRAE · Ec. 32</div>`},
+  v:{title:'📦 Volumen Específico (v)',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Volumen por kg de aire seco. Su inverso es la densidad. Determina el caudal en conductos y ventiladores.</p>
+    <h3>Fórmula (Gas Ideal)</h3>
+    <div class="formula-box">v = Ra·T / [P·(1 − W/(0.62198+W))]   [m³/kg]
+<span class="cm">// Ra=287.055 J/kg·K  T en Kelvin  P en Pa</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.v.toFixed(4)} m³/kg</div>
+    <p>Densidad: <strong>${(1/r.v).toFixed(3)} kg/m³</strong></p>
+    <div class="src-tag">ASHRAE · Ec. 28</div>`},
+  pv:{title:'🔬 Presión Parcial de Vapor',body:r=>`
+    <h3>¿Qué es?</h3>
+    <p>Presión que ejerce el vapor de agua. Base de todos los cálculos psicrométricos. <strong>Ley de Dalton</strong>: P = P_as + pv.</p>
+    <h3>Fórmulas</h3>
+    <div class="formula-box">pv = HR/100 · pws(Tbs)
+pv = W·P / (0.62198 + W)
+pws(T) = exp(23.7836 − 3782.89/(T+273.15−43.765))
+<span class="cm">// Antoine mejorada · resultado en Pa</span></div>
+    <h3>Valor actual</h3><div class="val-hl">${r.pw.toFixed(4)} kPa</div>
+    <p>pws(${r.tbs.toFixed(1)}°C) = <strong>${(pws(r.tbs)/1000).toFixed(4)} kPa</strong></p>
+    <div class="src-tag">ASHRAE Ec. 5–6 · WMO-No.8</div>`}
+};
+
+function openModal(key){
+  const res=getCurrent(), def=FORMULAS[key];
+  if(!def) return;
+  document.getElementById('modal-title').textContent=def.title;
+  document.getElementById('modal-body').innerHTML=def.body(res);
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(e){ if(e.target===document.getElementById('modalOverlay')) closeModalDirect(); }
+function closeModalDirect(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+// ════════════════════════════════════════════════════════
+// BÚSQUEDA DE CIUDADES
+// ════════════════════════════════════════════════════════
+function flag(code){ if(!code)return'🌍'; return code.toUpperCase().split('').map(c=>String.fromCodePoint(c.charCodeAt(0)+127397)).join(''); }
+
+async function searchCities(q){
+  try{
+    const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=7&language=es&format=json`);
+    return (await r.json()).results||[];
+  }catch{ return []; }
+}
+
+function showDrop(results){
+  const dd=document.getElementById('searchDrop');
+  if(!results.length){ dd.innerHTML=`<div class="dd-msg">Sin resultados</div>`; }
+  else{
+    dd.innerHTML=results.map(r=>{
+      const sub=[r.admin1,r.country].filter(Boolean).join(', ');
+      return `<div class="dd-item" onclick="selectCity(${r.latitude},${r.longitude},'${r.name.replace(/'/g,"\\'")}','${(r.country||'').replace(/'/g,"\\'")}','${r.country_code||''}',${r.elevation||0})">
+        <span class="dd-flag">${flag(r.country_code)}</span>
+        <div class="dd-info"><span class="dd-name">${r.name}</span><span class="dd-sub">${sub}</span></div></div>`;
+    }).join('');
+  }
+  dd.classList.add('open');
+}
+function hideDrop(){ document.getElementById('searchDrop').classList.remove('open'); }
+
+const cityInput=document.getElementById('cityInput');
+cityInput.addEventListener('input',e=>{
+  const q=e.target.value.trim();
+  document.getElementById('clearBtn').classList.toggle('show',q.length>0);
+  clearTimeout(searchTimer);
+  if(!q){ hideDrop(); return; }
+  searchTimer=setTimeout(async()=>{
+    document.getElementById('searchDrop').innerHTML=`<div class="dd-msg">Buscando...</div>`;
+    document.getElementById('searchDrop').classList.add('open');
+    showDrop(await searchCities(q));
+  },380);
+});
+function clearInput(){ cityInput.value=''; document.getElementById('clearBtn').classList.remove('show'); hideDrop(); cityInput.focus(); }
+document.addEventListener('click',e=>{ if(!document.getElementById('searchWrap').contains(e.target)) hideDrop(); });
+
+async function selectCity(lat,lon,name,country,cc,elevation){
+  hideDrop(); cityInput.value=''; document.getElementById('clearBtn').classList.remove('show');
+  state.city={name,country,lat,lon,elevation,countryCode:cc};
+  await loadWeather();
+}
+
+// ════════════════════════════════════════════════════════
+// WEATHER API
+// ════════════════════════════════════════════════════════
+function wIcon(c){ if(c===0)return'☀️';if(c<=2)return'🌤️';if(c<=3)return'☁️';if(c<=48)return'🌫️';if(c<=67)return'🌧️';if(c<=77)return'🌨️';if(c<=82)return'🌦️';if(c<=86)return'❄️';if(c<=99)return'⛈️';return'🌡️'; }
+
+async function loadWeather(){
+  if(!state.city) return;
+  showLoading('Obteniendo datos meteorológicos...');
+  try{
+    const{lat,lon}=state.city;
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
+      `&current=temperature_2m,relative_humidity_2m,dew_point_2m,surface_pressure,wind_speed_10m,weather_code`+
+      `&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,weather_code&forecast_days=2&timezone=auto`;
+    const r=await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json(); state.weatherData=d;
+    applyWeather(d); renderCard(d); renderForecast(d);
+    showToast(`✅ ${state.city.name} cargado`);
+  }catch(e){ showToast(`❌ Error: ${e.message}`); }
+  finally{ hideLoading(); }
+}
+
+function applyWeather(d){
+  const c=d.current;
+  state.tbs=c.temperature_2m; state.hr=Math.min(100,c.relative_humidity_2m);
+  state.P=c.surface_pressure*100; state.mode='hr';
+  document.getElementById('tbs').value=state.tbs;
+  document.getElementById('hr').value=state.hr;
+  state.tmin=Math.max(-15,Math.floor(state.tbs/5)*5-12);
+  state.tmax=Math.min(60,Math.ceil(state.tbs/5)*5+18);
+  document.querySelectorAll('.sc-btn').forEach(b=>b.classList.remove('active'));
+  ['p-std','p-1000','p-2000'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  // Header pill
+  document.getElementById('headerCityName').textContent=state.city.name;
+  document.getElementById('headerCityPill').style.display='flex';
+  setMode('hr'); updateUI();
+}
+
+function renderCard(d){
+  const c=d.current, city=state.city;
+  document.getElementById('noCityState').style.display='none';
+  document.getElementById('cityData').style.display='flex';
+  document.getElementById('wh-icon').textContent=wIcon(c.weather_code);
+  document.getElementById('wh-city').textContent=city.name;
+  document.getElementById('wh-country').textContent=`${city.country} ${flag(city.countryCode)}`;
+  document.getElementById('wh-temp').textContent=`${c.temperature_2m.toFixed(1)}°C`;
+  document.getElementById('wh-time').textContent='Actualizado: '+new Date().toLocaleTimeString('es',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('wg-hr').textContent=`${c.relative_humidity_2m}%`;
+  document.getElementById('wg-td').textContent=`${c.dew_point_2m.toFixed(1)}°C`;
+  document.getElementById('wg-p').textContent=`${c.surface_pressure.toFixed(0)} hPa`;
+  document.getElementById('wg-wind').textContent=`${c.wind_speed_10m.toFixed(0)} km/h`;
+  document.getElementById('wg-alt').textContent=`${Math.round(city.elevation)} m`;
+}
+
+function renderForecast(d){
+  const el=document.getElementById('forecastScroll'); el.innerHTML='';
+  const{time:T,temperature_2m:temps,relative_humidity_2m:hrs,weather_code:codes}=d.hourly;
+  const now=new Date(); let si=0;
+  for(let i=0;i<T.length;i++){ if(new Date(T[i])>=now){si=i;break;} }
+  for(let i=si;i<Math.min(si+13,T.length);i++){
+    const h=new Date(T[i]).getHours();
+    const div=document.createElement('div');
+    div.className='fc'+(i===si?' active':'');
+    div.innerHTML=`<div class="fc-t">${h.toString().padStart(2,'0')}:00</div><div class="fc-i">${wIcon(codes[i])}</div><div class="fc-tp">${temps[i].toFixed(0)}°</div><div class="fc-h">${hrs[i]}%</div>`;
+    div.addEventListener('click',()=>{
+      state.tbs=temps[i]; state.hr=Math.min(100,hrs[i]);
+      document.getElementById('tbs').value=state.tbs; document.getElementById('hr').value=state.hr;
+      state.tmin=Math.max(-15,Math.floor(state.tbs/5)*5-12);
+      state.tmax=Math.min(60,Math.ceil(state.tbs/5)*5+18);
+      document.querySelectorAll('.fc').forEach((e,j)=>e.classList.toggle('active',j===(i-si)));
+      updateUI(); showToast(`📊 ${h}:00 — ${temps[i].toFixed(0)}°C · ${hrs[i]}% HR`);
+    });
+    el.appendChild(div);
+  }
+}
+
+function clearCity(){
+  state.city=null; state.weatherData=null;
+  document.getElementById('noCityState').style.display='flex';
+  document.getElementById('cityData').style.display='none';
+  document.getElementById('headerCityPill').style.display='none';
+  showToast('Ciudad eliminada'); updateUI();
+}
+
+async function refreshWeather(){
+  if(!state.city) return;
+  const btn=document.getElementById('refreshBtn');
+  btn.textContent='⟳ Actualizando...'; btn.style.opacity='.6';
+  await loadWeather();
+  btn.textContent='⟳ Actualizar datos'; btn.style.opacity='1';
+}
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function showLoading(m){ document.getElementById('loadTxt').textContent=m||'Cargando...'; document.getElementById('chartLoading').classList.add('show'); }
+function hideLoading(){ document.getElementById('chartLoading').classList.remove('show'); }
+function showToast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2600); }
+
+// Offline detection
+window.addEventListener('online',()=>document.getElementById('offlineBanner').classList.remove('show'));
+window.addEventListener('offline',()=>document.getElementById('offlineBanner').classList.add('show'));
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+// Resize observer para el canvas
+const ro=new ResizeObserver(()=>resizeCanvas());
+ro.observe(document.getElementById('canvasWrap'));
+
+// Prevenir doble-tap zoom en iOS
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+// Prevenir scroll bounce en iOS
+document.addEventListener('touchmove',e=>{ if(e.target===canvas) e.preventDefault(); },{passive:false});
+
+// Canvas táctil: pinch-to-zoom para escala
+let lastPinchDist=null;
+canvas.addEventListener('touchstart',e=>{ if(e.touches.length===2){ lastPinchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); }},{passive:true});
+canvas.addEventListener('touchmove',e=>{
+  if(e.touches.length===2&&lastPinchDist!==null){
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    const ratio=lastPinchDist/d;
+    const span=state.tmax-state.tmin;
+    const newSpan=Math.max(10,Math.min(70,span*ratio));
+    const center=(state.tmin+state.tmax)/2;
+    state.tmin=Math.max(-20,center-newSpan/2);
+    state.tmax=Math.min(65,center+newSpan/2);
+    lastPinchDist=d;
+    draw();
+  }
+},{passive:true});
+canvas.addEventListener('touchend',()=>{ lastPinchDist=null; },{passive:true});
+
+updateUI();
+</script>
+</body>
+</html>
